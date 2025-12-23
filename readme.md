@@ -1,292 +1,184 @@
-# Projeto completo: Leitura de Manômetro com YOLO + Regressão
+# reader-manometer
 
-Este guia te conduz **do zero até a inferência final**, usando **YOLO para detectar o ponteiro** e **uma rede de regressão para estimar o ângulo**.
+📟 **Leitura automática de manômetros analógicos** usando **YOLO (detecção)** e **regressão de ângulo**, com conversão para **porcentagem, pressão e volume**.
 
-O foco é **robustez industrial** (iluminação ruim, ângulo da câmera, sujeira).
-
----
-
-## 1️⃣ Visão geral da arquitetura
-
-Pipeline:
-
-```
-Imagem → YOLO → bounding box do ponteiro
-                    ↓
-            Crop do ponteiro
-                    ↓
-        CNN de regressão → ângulo (0–360°)
-                    ↓
-           Conversão para valor físico
-```
-
-Decisão importante:
-
-* YOLO **não lê valor**, só localiza o ponteiro
-* A regressão **aprende o ângulo**, não regras geométricas
+Projetado para aplicações **industriais, hospitalares e IoT**, eliminando a necessidade de leitura manual.
 
 ---
 
-## 2️⃣ Ambiente e dependências
+## ✨ Principais recursos
 
-### Criar ambiente virtual
+* Detecção do manômetro via **YOLOv8**
+* Regressão precisa do **ângulo do ponteiro**
+* Conversão de ângulo → porcentagem
+* Cálculo de **pressão** e **volume**
+* API simples e reutilizável
+* Compatível com pipelines de visão computacional
+
+---
+
+## 📦 Instalação
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+pip install reader-manometer
 ```
 
-### Instalar dependências
+> ⚠️ O pacote **inclui modelos treinados**.
+> Porem você pode fornecer seus próprios arquivos `.pt`.
 
-```bash
-pip install ultralytics opencv-python torch torchvision numpy matplotlib
+---
+
+## 🔧 Requisitos
+
+* Python **3.9+**
+* PyTorch
+* Ultralytics (YOLOv8)
+* OpenCV
+* NumPy
+
+---
+
+## 📁 Arquivos necessários
+
+Você precisa informar:
+
+* **Modelo YOLO treinado** (`best.pt`)
+* **Modelo de regressão de ângulo** (`regressor.pt`)
+
+Exemplo:
+
 ```
-
-Teste:
-
-```bash
-yolo checks
+reader_manometer/runs/detect/train2/weights/best.pt
+reader_manometer/regressor.pt
 ```
 
 ---
 
-## 3️⃣ Estrutura do projeto
+## 🚀 Uso rápido
 
-```
-manometro_ai/
-├── data/
-│   ├── raw_images/
-│   ├── yolo_dataset/
-│   │   ├── images/
-│   │   └── labels/
-│   └── regression_dataset/
-├── yolo/
-│   ├── train_yolo.py
-│   └── gauge.yaml
-├── regression/
-│   ├── model.py
-│   ├── train.py
-│   └── infer.py
-├── pipeline/
-│   └── infer_full.py
-└── README.md
-```
-
----
-
-## 4️⃣ Coleta de imagens (FUNDAMENTAL)
-
-📸 Tire **50–200 fotos** do manômetro:
-
-* diferentes valores
-* luz forte / fraca
-* câmera torta
-* reflexo no vidro
-
-Salve em:
-
-```
-data/raw_images/
-```
-
-👉 Quanto mais variação, melhor o modelo.
-
----
-
-## 5️⃣ Dataset YOLO (detecção do ponteiro)
-
-### 5.1 Rotulagem
-
-Use **LabelImg** ou **Roboflow**.
-
-Classe única:
-
-```
-needle
-```
-
-Cada bounding box deve pegar **apenas o ponteiro**, não o centro inteiro.
-
-### 5.2 Estrutura YOLO
-
-```
-data/yolo_dataset/
-├── images/
-│   ├── img1.jpg
-│   └── img2.jpg
-└── labels/
-    ├── img1.txt
-    └── img2.txt
-```
-
-Formato label:
-
-```
-0 x_center y_center width height
-```
-
----
-
-## 6️⃣ Configuração YOLO
-
-### gauge.yaml
-
-```yaml
-path: data/yolo_dataset
-train: images
-val: images
-
-nc: 1
-names: ["needle"]
-```
-
-### Treino
+### Exemplo completo
 
 ```python
-from ultralytics import YOLO
+from reader_manometer import Manometer, angle_to_percent, get_volume
 
-model = YOLO("yolov8n.pt")
-model.train(
-    data="gauge.yaml",
-    epochs=100,
-    imgsz=640,
-    batch=16
+man = Manometer(
+    model="reader_manometer/runs/detect/train2/weights/best.pt",
+    regressor="reader_manometer/regressor.pt"
 )
-```
+'''
+retorna uma lista de angulos, muito util quando uma imagem possue mais
+de um manometro
+'''
+angles = man.get_angle(
+    filename="./image3.jpeg"
+)
 
-Resultado:
+if angles:
+    print("ângulos:", angles)
 
-```
-runs/detect/train/weights/best.pt
+    man_pressure = angles[0]
+    man_volume = angles[1]
+
+    percent = angle_to_percent(man_pressure)
+    print("porcentagem:", round(percent, 2))
+
+    print("pressão:", round(get_volume(percent, 25), 2))
+
+    vol_percent = angle_to_percent(man_volume)
+    print("porcentagem volume:", round(vol_percent, 2))
+
+    print("volume:", round(get_volume(vol_percent, 800), 2))
 ```
 
 ---
 
-## 7️⃣ Dataset de regressão (ângulo)
+## 🧠 API
 
-### 7.1 Gerar crops do ponteiro
+### `Manometer`
 
-Use o YOLO treinado para recortar automaticamente:
+Classe principal responsável pela inferência.
 
 ```python
-from ultralytics import YOLO
-import cv2, os
-
-yolo = YOLO("best.pt")
-
-for img_name in os.listdir("data/raw_images"):
-    img = cv2.imread(f"data/raw_images/{img_name}")
-    r = yolo(img)[0]
-    for box in r.boxes:
-        x1, y1, x2, y2 = map(int, box.xyxy[0])
-        crop = img[y1:y2, x1:x2]
-        cv2.imwrite(f"data/regression_dataset/{img_name}", crop)
+Manometer(model: str, regressor: str)
 ```
 
-### 7.2 Labels de ângulo
+**Parâmetros**
 
-Crie um CSV:
-
-```
-image,angle
-img1.jpg,45
-img2.jpg,132
-```
-
-⚠️ Ângulo real medido manualmente (gabarito).
-
-Normalize:
-
-```
-angle_norm = angle / 360
-```
+* `model`: caminho para o modelo YOLO (`.pt`)
+* `regressor`: caminho para o modelo de regressão de ângulo (`.pt`)
 
 ---
 
-## 8️⃣ Modelo de regressão
-
-### model.py
+### `get_angle()`
 
 ```python
-import torch.nn as nn
-
-class AngleRegressor(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(3, 16, 3, 1, 1), nn.ReLU(), nn.MaxPool2d(2),
-            nn.Conv2d(16, 32, 3, 1, 1), nn.ReLU(), nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, 3, 1, 1), nn.ReLU(), nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(64, 1), nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        return self.net(x)
+angles = man.get_angle(filename: str)
 ```
 
----
-
-## 9️⃣ Treino da regressão
-
-* Entrada: imagem do ponteiro
-* Saída: ângulo normalizado
-* Loss: MSE
+**Retorno**
 
 ```python
-loss = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+[angulo_1, angulo_2]
 ```
 
-Treine até erro < 2–3 graus.
+* Valores em **graus**
+* Retorna `None` se não detectar o manômetro
 
 ---
 
-## 🔟 Pipeline final (inferência completa)
+### `angle_to_percent()`
 
 ```python
-img → YOLO → crop → regressão → ângulo → valor físico
+percent = angle_to_percent(angle)
 ```
 
-Conversão:
+Converte o ângulo do ponteiro em **porcentagem (0–100%)**, considerando a escala do manômetro.
+
+---
+
+### `get_volume()`
 
 ```python
-valor = escala_min + ang_norm * (escala_max - escala_min)
+value = get_volume(percent, max_value)
 ```
 
----
+Usado para calcular:
 
-## 1️⃣1️⃣ Boas práticas industriais
-
-✔ normalize iluminação
-✔ aumente dataset com blur / brilho
-✔ use câmera fixa
-✔ faça calibração inicial (zero)
+* Pressão (ex: `25 bar`)
+* Volume (ex: `800 L`)
 
 ---
 
-## 1️⃣2️⃣ Próximos passos
+## 🏭 Casos de uso
 
-* Converter modelos para ONNX
-* Rodar em C++
-* Edge AI (Jetson / Coral)
-* Detectar números da escala
-
----
-
-## 🎯 Resultado esperado
-
-Precisão típica:
-
-* ±1–3° de erro
-* leitura estável
-* robusto a ruído
+* Monitoramento de oxigênio hospitalar
+* Leitura remota de tanques pressurizados
+* Automação industrial
+* Integração com ESP32, APIs REST e MQTT
+* Dashboards e sistemas SCADA
 
 ---
 
-Se quiser, no próximo passo eu posso:
+## ⚠️ Observações importantes
 
-➡️ te ajudar a **rotular imagens corretamente**
-➡️ montar o **script de treino da regressão completo**
-➡️ adaptar para **C++ / ONNX**
-➡️ calibrar para o **seu manômetro específico**
+* O modelo YOLO deve ser **treinado especificamente** para seu tipo de manômetro apesar de ja pussuir uma boa base
+* A regressão depende de **imagens bem enquadradas**
+* A escala angular precisa estar configurada corretamente no projeto
+
+---
+
+## 🛣️ Roadmap
+
+* [ ] Interface CLI (`reader-manometer image.jpg`)
+* [ ] API REST (FastAPI)
+* [ ] Suporte a múltiplos manômetros
+* [ ] Exportação MQTT / HTTP
+* [ ] Dashboard web
+
+---
+
+## 📄 Licença
+
+MIT License
+
+---
