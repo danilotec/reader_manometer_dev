@@ -60,35 +60,41 @@ reader_manometer/regressor.pt
 ### Exemplo completo
 
 ```python
-from reader_manometer import Manometer, angle_to_percent, get_volume
+from reader_manometer import Manometer, angle_to_percent, get_volume, CropImage, YOLO
 
-man = Manometer(
-    model="reader_manometer/runs/detect/train2/weights/best.pt",
-    regressor="reader_manometer/regressor.pt"
-)
-'''
-retorna uma lista de angulos, muito util quando uma imagem possue mais
-de um manometro
-'''
-angles = man.get_angle(
-    filename="./image3.jpeg"
-)
+yolo = YOLO("reader_manometer/runs/detect/train2/weights/best.pt")
 
-if angles:
-    print("ângulos:", angles)
+def get_crop():
+    crop = CropImage(
+        yolo=yolo,
+        imput_dir='./',
+        output_dir='./crops'
+    )
+    crop.generate_crop('image2.jpg')
 
-    man_pressure = angles[0]
-    man_volume = angles[1]
 
-    percent = angle_to_percent(man_pressure)
-    print("porcentagem:", round(percent, 2))
+def get_vol():
+    man = Manometer(
+        yolo=yolo,
+        regressor="reader_manometer/regressor.pt"
+    )
 
-    print("pressão:", round(get_volume(percent, 25), 2))
+    angles = man.get_angle(
+        filename='./crops/image2_0.jpg'
+    )
 
-    vol_percent = angle_to_percent(man_volume)
-    print("porcentagem volume:", round(vol_percent, 2))
 
-    print("volume:", round(get_volume(vol_percent, 800), 2))
+    if angles:
+        
+        print("ângulos:", angles)
+        
+        man_volume = angles[0]
+
+        vol_percent = angle_to_percent(man_volume)
+        print("porcentagem volume:", round(vol_percent, 2))
+
+        print("volume:", round(get_volume(vol_percent, 800), 2))
+
 ```
 
 ---

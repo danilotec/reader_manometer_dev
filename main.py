@@ -1,30 +1,35 @@
-from .regression import Manometer, YOLO
+from .regression import Manometer, YOLO, CropImage
 from .utils import angle_to_percent, get_volume
 
-yolo = YOLO("runs/detect/train2/weights/best.pt")
-man = Manometer(
-    yolo=yolo,
-    regressor="regressor.pt"
+yolo = YOLO("reader_manometer/runs/detect/train2/weights/best.pt")
+
+def get_crop():
+    crop = CropImage(
+        yolo=yolo,
+        imput_dir='./',
+        output_dir='./crops'
+    )
+    crop.generate_crop('image2.jpg')
+
+
+def get_vol():
+    man = Manometer(
+        yolo=yolo,
+        regressor="reader_manometer/regressor.pt"
     )
 
-angles = man.get_angle(
-    filename="dataset/raw_images/image3.jpeg"
+    angles = man.get_angle(
+        filename='./crops/image2_0.jpg'
     )
 
 
-if angles: 
-    print('angulos: ', angles)
-    
-    man_pression = angles[0]
-    man_volume = angles[1]
+    if angles:
+        
+        print("ângulos:", angles)
+        
+        man_volume = angles[0]
 
-    percent = angle_to_percent(man_pression)
-    print('porcentagem: ', round(percent, 2))
+        vol_percent = angle_to_percent(man_volume)
+        print("porcentagem volume:", round(vol_percent, 2))
 
-    print('pressão: ', round(get_volume(percent, 25), 2))
-
-    vol_percent = angle_to_percent(man_volume)
-    print('porcentagem: ', round(vol_percent, 2))
-
-    print('volume: ', round(get_volume(percent, 800), 2))
-    
+        print("volume:", round(get_volume(vol_percent, 800), 2))
