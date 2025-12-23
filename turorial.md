@@ -1,4 +1,4 @@
-## Passo a passo para o uso
+## Passo a passo para o treinamento de novos modelos
 
 ### 1 - Treinar modelo de manometro
     
@@ -14,7 +14,7 @@
 
 ### 4 - Usar o modelo para obter angulação no ponteiro(needle)
 
-    python regression/infer.py
+    seguir o exemplo no readme.md
 
 
 * em dataset/yolo_dataset é necessario conter dentro das pastas images e labels,
