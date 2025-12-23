@@ -2,12 +2,11 @@
 *.jpg
 *.jpeg
 
-*.pt
 *.cache
 train/
 val/
-runs/
+
 __pycache__/
-*.onnx
+
 venv
 
