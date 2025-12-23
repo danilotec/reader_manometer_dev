@@ -1,8 +1,14 @@
 from regression import Manometer
 from utils import angle_to_percent, get_volume
 
-man = Manometer("runs/detect/train2/weights/best.pt")
-angles = man.get_angle("dataset/raw_images/image3.jpeg")
+man = Manometer(
+    model="runs/detect/train2/weights/best.pt",
+    regressor="regressor.pt"
+    )
+
+angles = man.get_angle(
+    filename="dataset/raw_images/image3.jpeg"
+    )
 
 
 if angles: 
