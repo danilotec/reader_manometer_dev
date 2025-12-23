@@ -10,9 +10,11 @@ class Manometer:
         self.reg.load_state_dict(torch.load("regressor.pt"))
         self.reg.eval()
 
-    def get_angle(self, filename: str) -> float | None:
+    def get_angle(self, filename: str) -> list | None:
         img = cv2.imread(filename)
         result = self.yolo(img)[0] #type: ignore
+
+        angles = []
 
         for box in result.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
@@ -22,5 +24,5 @@ class Manometer:
             t = torch.tensor(crop).float().permute(2, 0, 1).unsqueeze(0) / 255
 
             ang_norm = self.reg(t).item()
-            
-            return ang_norm * 360
+            angles.append(ang_norm * 360)
+        return angles
