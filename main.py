@@ -1,4 +1,4 @@
-from .regression import Manometer, YOLO, CropImage #type: ignore
+from .regression import Manometer, YOLO, CropImage
 from .utils import angle_to_percent, get_volume
 
 yolo = YOLO("reader_manometer/runs/detect/train2/weights/best.pt")

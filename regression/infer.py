@@ -1,6 +1,6 @@
 import torch
 import cv2
-from ultralytics import YOLO #type: ignore
+from ultralytics.models import YOLO
 from .model import AngleRegressor
 
 class Manometer:

@@ -1,4 +1,4 @@
-from .regression import Manometer, CropImage, YOLO #type: ignore 
+from .regression import Manometer, CropImage, YOLO
 from .utils import angle_to_percent, get_volume
 
 __ALL__ = [

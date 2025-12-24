@@ -1,5 +1,5 @@
 
-from ultralytics import YOLO #type: ignore
+from ultralytics.models import YOLO
 import cv2
 import os
 
