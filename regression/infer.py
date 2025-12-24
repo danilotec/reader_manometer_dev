@@ -10,23 +10,25 @@ class Manometer:
         self.reg.load_state_dict(torch.load(regressor))
         self.reg.eval()
 
-    def get_angle(self, filename: str) -> list | None:
+    def get_angle(self, filename: str) -> list[float] | None:
         img = cv2.imread(filename)
-        result = self.yolo(img)[0] #type: ignore
-        result.plot()
-        self.angles = []
+        if img is not None:
+            result = self.yolo(img)[0]
+            result.plot()
+            self.angles = []
 
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            crop = img[y1:y2, x1:x2] #type: ignore
-            crop = cv2.resize(crop, (224, 224))
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                crop = img[y1:y2, x1:x2]
+                crop = cv2.resize(crop, (224, 224))
 
-            t = torch.tensor(crop).float().permute(2, 0, 1).unsqueeze(0) / 255
+                t = torch.tensor(crop).float().permute(2, 0, 1).unsqueeze(0) / 255
 
-            ang_norm = self.reg(t).item()
-            self.angles.append(ang_norm * 360)
-        return self.angles
-    
+                ang_norm = self.reg(t).item()
+                self.angles.append(ang_norm * 360)
+            return self.angles
+        return None
+        
     def angle_to_percent(self, angle: float) -> float:
         '''
         :param angle: esse paramentro deve ser preenchido com o retorno do metodo get_angle da classe manometer

@@ -1,4 +1,4 @@
-from ultralytics import YOLO
+from ultralytics import YOLO #type: ignore
 import cv2
 import os
 
@@ -10,16 +10,20 @@ class CropImage:
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-    def generate_crop(self, img_name):
+    def generate_crop(self, img_name: str) -> None:
         img = cv2.imread(os.path.join(self.input_dir, img_name))
-        results = self.yolo(img)[0]
+        
+        if img is not None:
+            results = self.yolo(img)[0]
 
-        print(img_name)
-        for i, box in enumerate(results.boxes):
-            cls = int(box.cls[0])
-            if cls == 0:  # Needle
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                crop = img[y1:y2, x1:x2]
-                crop = cv2.resize(crop, (224, 224))
-                name = img_name.replace(".png", "").replace(".jpg", "").replace('.jpeg', '')
-                cv2.imwrite(f"{self.output_dir}/{name}_{i}.jpg", crop)
+            print(img_name)
+            for i, box in enumerate(results.boxes):
+                cls = int(box.cls[0])
+                if cls == 1:  # Needle
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    crop = img[y1:y2, x1:x2]
+                    crop = cv2.resize(crop, (224, 224))
+                    name = img_name.replace(".png", "").replace(".jpg", "").replace('.jpeg', '')
+                    cv2.imwrite(f"{self.output_dir}/{name}_{i}.jpg", crop)
+        else:
+            return None

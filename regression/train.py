@@ -20,16 +20,17 @@ class NeedleDataset(Dataset):
 
         img_path = os.path.join(self.img_dir, row["image"])
         img = cv2.imread(img_path)
-        img = cv2.resize(img, (224, 224)) #type: ignore
-        img = torch.tensor(img).float().permute(2, 0, 1) / 255.0
+        if img is not None:
+            img = cv2.resize(img, (224, 224))
+            img = torch.tensor(img).float().permute(2, 0, 1) / 255.0
 
-        angle = row["angle"] / 360.0  # normaliza
-        angle = torch.tensor([angle]).float()
+            angle = row["angle"] / 360.0  # normaliza o angulo
+            angle = torch.tensor([angle]).float()
 
-        return img, angle
+            return img, angle
 
 
-
+# treinamento
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 dataset = NeedleDataset(
