@@ -1,5 +1,5 @@
 from .regression import Manometer, CropImage, YOLO
-from .utils import angle_to_percent, get_volume
+from .main import get_angles_volum, get_crops_names
 
 __ALL__ = [
     'Manometer',
